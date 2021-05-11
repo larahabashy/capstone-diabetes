@@ -4,14 +4,14 @@
 '''This script does train validation test split on image folders
 for data loading in base Pytorch.
 
-Usage: image_folder_split.py --positive_dir=<positive_dir> --negative_dir=<negative_dir> --train_size=<train_size> --valid_size=<valid_size> --seed=<seed>
+Usage: image_folder_split.py --positive_dir=<positive_dir> --negative_dir=<negative_dir> [--train_size=0.7] [--valid_size=0.15] [--seed=2021]
 
 Options:
---positive_dir=<positive_dir>   Relative path to the image folder of positive class(string)
---negative_dir=<negative_dir>   Relative path to the image folder of negative class(string)
---train_size=<train_size>       training data size(float)
---valid_size=<train_size>       validation data size(float)
---seed=<seed>                   random seed(integer)
+--positive_dir=<positive_dir>   Relative path to the image folder of positive class(string/path)
+--negative_dir=<negative_dir>   Relative path to the image folder of negative class(string/path)
+--train_size=<train_size>       training data size(float) [default: 0.7]
+--valid_size=<train_size>       validation data size(float) [default: 0.15]
+--seed=<seed>                   random seed(integer) [default: 2021]
 '''
 
 import numpy as np
@@ -41,7 +41,7 @@ def main(positive_dir, negative_dir, train_size, valid_size, seed):
         traceback.print_exc()
         
     if not float(train_size) + float(valid_size) < 1:
-        raise ValueError('train size plus valid size is larger than or equal to 1.')
+        raise ValueError('train size plus valid size should not be larger than or equal to 1.')
     
     #the directory to save images to
     root_dir = 'data'
