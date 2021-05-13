@@ -1,0 +1,28 @@
+name: lipoenv
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+dependencies:
+  - black
+  - flake8
+  - pytorch
+  - ipykernel
+  - torchvision
+  - python=3.7
+  - nbformat
+  - scikit-learn
+  - matplotlib
+  - memory_profiler
+  - pandas
+  - altair
+  - cudatoolkit
+  - scipy
+  - numpy
+  - tensorboard
+  - pytorch
+  - pip
+  - pip:
+    - albumentations
+    - docopt
+    - torch-summary
