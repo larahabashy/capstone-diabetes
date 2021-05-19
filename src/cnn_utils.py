@@ -26,6 +26,7 @@ def trainer(model, criterion, optimizer, train_loader, valid_loader, device, epo
     
     train_accuracy = []
     valid_accuracy = []
+    valid_loss = []
     for epoch in range(epochs):  # for each epoch
         train_batch_loss = 0
         train_batch_acc = 0
@@ -59,6 +60,7 @@ def trainer(model, criterion, optimizer, train_loader, valid_loader, device, epo
                 valid_batch_loss += loss.item()
                 valid_batch_acc += (y_hat_labels == y).type(torch.float32).mean().item()
         valid_accuracy.append(valid_batch_acc / len(valid_loader))
+        valid_loss.append(valid_batch_loss / len(valid_loader))
         
         with torch.no_grad():
             for i, (inputs, classes) in enumerate(valid_loader):
@@ -71,6 +73,15 @@ def trainer(model, criterion, optimizer, train_loader, valid_loader, device, epo
         recall = confusion_matrix.numpy()[1,1]/(confusion_matrix.numpy()[1,1]+confusion_matrix.numpy()[1,0])
         model.train()
         
+        # Early stopping
+        if epoch > 0 and valid_loss[-1] > valid_loss[-2]:
+            consec_increases += 1
+        else:
+            consec_increases = 0
+        if consec_increases == patience:
+            print(f"Stopped early at epoch {epoch + 1} - val loss increased for {consec_increases} consecutive epochs!")
+            break
+            
         # Print progress
         if verbose:
             print(f"Epoch {epoch + 1}:",
