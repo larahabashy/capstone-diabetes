@@ -21,7 +21,7 @@ def weights_init(m):
         nn.init.xavier_uniform_(m.weight)
         nn.init.zeros_(m.bias)
         
-def trainer(model, criterion, optimizer, train_loader, valid_loader, device, epochs=5, verbose=True):
+def trainer(model, criterion, optimizer, train_loader, valid_loader, device, epochs=5, patience=5, verbose=True):
     """Simple training wrapper for PyTorch network."""
     
     train_accuracy = []
