@@ -68,8 +68,8 @@ def trainer(model, criterion, optimizer, train_loader, valid_loader, device, epo
         
         with torch.no_grad():
             for i, (inputs, classes) in enumerate(valid_loader):
-                inputs = inputs.to(device)
-                classes = classes.to(device)
+                inputs = inputs.to(device, data_type)
+                classes = classes.to(device, data_type)
                 outputs = model(inputs).flatten()
                 preds = torch.sigmoid(outputs) > 0.5
                 for t, p in zip(classes.view(-1), preds.view(-1)):

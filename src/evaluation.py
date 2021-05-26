@@ -44,7 +44,9 @@ def main(test_dir, model_dir, model, image_size, batch_size, seed):
     )
 
     cnn_model = models.inception_v3(pretrained=True)
-    cnn_model.fc = nn.Linear(2048, 1)
+    cnn_model.fc = nn.Sequential(nn.Linear(2048, 512),
+                                 nn.ReLU(),
+                                 nn.Linear(512, 1))
     cnn_model.aux_logits = False
     
     if MODEL == "inception":
@@ -57,6 +59,19 @@ def main(test_dir, model_dir, model, image_size, batch_size, seed):
             ('new2', nn.Linear(500, 1))
         ]))
         cnn_model.classifier = new_layers
+    elif MODEL == "resnet":
+        cnn_model = models.resnet50(pretrained=True)
+        cnn_model.fc = nn.Sequential(nn.Linear(2048, 512),
+                                 nn.ReLU(),
+                                 nn.Linear(512, 1))
+    elif MODEL == "vgg":
+        cnn_model = models.vgg16_bn(pretrained=True)
+        num_features = cnn_model.classifier[6].in_features
+        features = list(cnn_model.classifier.children())[:-1] # Remove last layer
+        features.extend([nn.Linear(num_features, 1)]) # Add our layer with 4 outputs
+        cnn_model.classifier = nn.Sequential(*features) # Replace the model classifier
+    # else:
+    #     raise ValueError("Model input should be among 'inception','densenet','resnet','vgg'.")
         
     cnn_model.load_state_dict(torch.load(MODEL_DIR))  # load model from PATH
 
