@@ -1,0 +1,5 @@
+Model,Size (MB)
+DenseNet,30.49
+ResNet,98.56
+Inception,100.82
+VGG16,537.16
