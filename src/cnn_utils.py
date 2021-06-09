@@ -6,6 +6,10 @@ import pandas as pd
 from torchvision import transforms, models, datasets, utils
 from captum.attr import GradientShap
 from captum.attr import visualization as viz
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+from PIL import Image
+import os
 
 
 def weights_init(model_layer, verbose=False):
@@ -189,30 +193,82 @@ def recall_calculation(confusion_matrix):
     return test_recall
 
 
+class LipoDataset(torch.utils.data.Dataset):
+    """define a custom dataset to be able to do albument transformations"""
+
+    def __init__(self, root_dir, transform=None):
+        self.transform = transform
+        self.root_dir = root_dir
+
+        # Create a list of filepaths of images and the respective label
+        self.samples = []
+
+        for i in os.listdir(root_dir):
+            if i in ["positive", "negative"]:
+                folder = os.path.join(root_dir, i)
+                target = folder.split("/")[-1]
+                for label in os.listdir(folder):
+                    if str(label) not in [".DS_Store"]:
+                        filepath = os.path.join(folder, label)
+                        self.samples.append((target, filepath))
+
+    def __len__(self):
+        # Get the length of the samples
+        return len(self.samples)
+
+    def __getitem__(self, index):
+        # Implement logic to get an image and its label using the received index.
+        #
+        # `image` should be a NumPy array with the shape [height, width, num_channels].
+        # If an image contains three color channels, it should use an RGB color scheme.
+        #
+        # `label` should be an integer in the range [0, model.num_classes - 1] where `model.num_classes`
+        # is a value set in the `search.yaml` file.
+
+        # get the filepath of the image based on the index and convert it to
+        # color scale and then into a numpy array
+        image = np.array(Image.open(self.samples[index][1]).convert("RGB"))
+
+        # maps a label to an integer value
+        label_to_int = {"positive": 1, "negative": 0}
+        label = label_to_int[self.samples[index][0]]
+
+        if self.transform is not None:
+            transformed = self.transform(image=image)
+            image = transformed["image"]
+
+        return image, label
+
+
 def image_transformation_train(TRAIN_DIR, VALID_DIR, IMAGE_SIZE, BATCH_SIZE):
     """image transformation on training, validation set"""
-    train_transforms = transforms.Compose(
+    
+    train_transforms = A.Compose(
         [
-            transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomRotation(degrees=20),
-            transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-            transforms.ToTensor(),
+            A.RandomBrightnessContrast(
+                brightness_limit=(-0.1, 0.1), contrast_limit=(0, 1.0)
+            ),
+            A.VerticalFlip(),
+            A.HorizontalFlip(),
+            A.Resize(IMAGE_SIZE, IMAGE_SIZE),
+            ToTensorV2(),
         ]
     )
 
-    valid_transforms = transforms.Compose(
-        [transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)), transforms.ToTensor()]
+    valid_transforms = A.Compose(
+        [
+            A.Resize(height=IMAGE_SIZE, width=IMAGE_SIZE),
+            ToTensorV2(),
+        ]
     )
 
-    train_dataset = torchvision.datasets.ImageFolder(
-        root=TRAIN_DIR, transform=train_transforms
-    )
+    train_dataset = LipoDataset(root_dir=TRAIN_DIR, transform=train_transforms)
+
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
-    valid_dataset = torchvision.datasets.ImageFolder(
-        root=VALID_DIR, transform=valid_transforms
-    )
+    valid_dataset = LipoDataset(root_dir=VALID_DIR, transform=valid_transforms)
+    
     valid_loader = torch.utils.data.DataLoader(
         valid_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
@@ -230,6 +286,15 @@ def image_transformation_test(TEST_DIR, IMAGE_SIZE, BATCH_SIZE):
     test_dataset = torchvision.datasets.ImageFolder(
         root=TEST_DIR, transform=test_transforms
     )
+    test_transforms = A.Compose(
+        [
+            A.Resize(height=IMAGE_SIZE, width=IMAGE_SIZE),
+            ToTensorV2(),
+        ]
+    )
+
+    test_dataset = LipoDataset(root_dir=TEST_DIR, transform=test_transforms)
+    
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=BATCH_SIZE, shuffle=False
     )
@@ -256,14 +321,14 @@ def confusion_matrix_eval(cnn, data_loader):
                     1.0,
                 ]:
                     fp.append(
-                        data_loader.dataset.samples[(i * data_loader.batch_size + j)][0]
+                        data_loader.dataset.samples[(i * data_loader.batch_size + j)][1]
                     )
                 elif [float(t.cpu().numpy()), float(p.long().cpu().numpy())] == [
                     1.0,
                     0.0,
                 ]:
                     fn.append(
-                        data_loader.dataset.samples[(i * data_loader.batch_size + j)][0]
+                        data_loader.dataset.samples[(i * data_loader.batch_size + j)][1]
                     )
                 j += 1
         return {"false_positives": fp, "false_negatives": fn}
