@@ -6,6 +6,12 @@ import pandas as pd
 from torchvision import transforms, models, datasets, utils
 from captum.attr import GradientShap
 from captum.attr import visualization as viz
+from collections import OrderedDict
+from collections.abc import Iterable
+
+torch.manual_seed(2020)
+dtype = torch.float32
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from PIL import Image
@@ -13,7 +19,15 @@ import os
 
 
 def weights_init(model_layer, verbose=False):
-    """Initialize weights of each layer to make the results more reproducible"""
+    """Initialize weights of each layer to make results more reproducible.
+
+    Parameters
+    ----------
+    model_layer : torch.nn
+        A layer of a pytorch model.
+    verbose : bool, optional
+        Prints the layer being initialized, by default False.
+    """
     if isinstance(model_layer, nn.Conv2d):
         if verbose:
             print("Initializing weights of a Conv2d layer!")
@@ -43,7 +57,62 @@ def trainer(
     patience=5,
     verbose=True,
 ):
-    """Simple training wrapper for PyTorch network."""
+    """Simple training wrapper for PyTorch network.
+
+    Parameters
+    ----------
+    model : torchvision.models
+        A pytorch model.
+    criterion : torch.nn
+        A criterion for model training.
+    optimizer : torch.optim
+        An optimizer for model training.
+    train_loader : torch.utils.data.DataLoader
+        DataLoader object with data from the training set.
+    valid_loader : torch.utils.data.DataLoader
+        DataLoader object with data from the validation set.
+    device : torch.device
+        Device type CUDA or CPU.
+    epochs : int, optional
+        Number of epochs to train for, by default 5
+    patience : int, optional
+        Threshold for early stopping, by default 5
+    verbose : bool, optional
+        Print accuracy and recall scores for each epoch, by default True
+
+    Returns
+    -------
+    dict
+        A dictionary containing the training and validation set accuracies and validation set recall scores.
+
+    Raises
+    ------
+    TypeError
+        Raised if train_loader is not an iterable object.
+    TypeError
+        Raised if valid_loader is not an iterable object.
+    TypeError
+        Raised if epochs is not an integer.
+    TypeError
+        Raised if patience is not an integer.
+    TypeError
+        Raised if verbose is not a boolean.
+
+    """
+    if not isinstance(train_loader, Iterable):
+        raise ValueError("train_loader is not iterable")
+
+    if not isinstance(valid_loader, Iterable):
+        raise ValueError("valid_loader is not iterable")
+
+    if not isinstance(epochs, int):
+        raise ValueError("Epochs is not an integer")
+
+    if not isinstance(patience, int):
+        raise ValueError("Patience is not an integer")
+
+    if not isinstance(verbose, bool):
+        raise ValueError("Vebose is not a boolean")
 
     data_type = torch.float32
     valid_loss = []
@@ -90,9 +159,14 @@ def trainer(
                 preds = torch.sigmoid(outputs) > 0.5
                 for t, p in zip(classes.view(-1), preds.view(-1)):
                     confusion_matrix[t.long(), p.long()] += 1
-        recall = confusion_matrix.numpy()[1, 1] / (
-            confusion_matrix.numpy()[1, 1] + confusion_matrix.numpy()[1, 0]
-        )
+
+        if (confusion_matrix.numpy()[1, 1] + confusion_matrix.numpy()[1, 0]) == 0:
+            recall = 0
+        else:
+            recall = confusion_matrix.numpy()[1, 1] / (
+                confusion_matrix.numpy()[1, 1] + confusion_matrix.numpy()[1, 0]
+            )
+
         model.train()
 
         # Early stopping
@@ -122,31 +196,30 @@ def trainer(
     }
 
 
-def cnn_feature_importance(cnn, image_tensor):
-    """visualize feature importance of CNN"""
-    torch.manual_seed(2020)
-    np.random.seed(2020)
-    cnn = cnn.cpu()
-    gradient_shap = GradientShap(cnn)
-    rand_img_dist = torch.cat([image_tensor * 0, image_tensor * 1])
-    attributions_gs = gradient_shap.attribute(
-        image_tensor, n_samples=20, stdevs=0.15, baselines=rand_img_dist, target=0
-    )
-    _ = viz.visualize_image_attr_multiple(
-        np.transpose(attributions_gs.squeeze().detach().numpy(), (1, 2, 0)),
-        np.transpose(image_tensor.squeeze().detach().numpy(), (1, 2, 0)),
-        ["original_image", "blended_heat_map"],
-        ["all", "absolute_value"],
-        titles=["Original Image", "Gradient SHAP"],
-        cmap="plasma",
-        show_colorbar=True,
-        fig_size=(6, 6),
-        alpha_overlay=0.7,
-    )
-
-
 def get_test_accuracy(cnn, data_loader):
-    """return accuracy on a holdout sample for a pytorch cnn model"""
+    """Returns the accuracy scores on a holdout sample for a pytorch cnn model.
+
+    Parameters
+    ----------
+    cnn : torchvision.models
+        A pytorch model.
+    data_loader : torch.utils.data.DataLoader
+        A dataloader iterating through the holdout test sample.
+
+    Returns
+    -------
+    int
+        Accuracy score on the holdout test sample.
+
+    Raises
+    ------
+    ValueError
+        Raised if data_loader is not iterable.
+    """
+
+    if not isinstance(data_loader, Iterable):
+        raise ValueError("data_loader is not iterable")
+
     test_batch_acc = 0
     cnn.eval()
     with torch.no_grad():
@@ -163,7 +236,29 @@ def get_test_accuracy(cnn, data_loader):
 
 
 def pytorch_confusion_matrix(cnn, data_loader):
-    """return confusion matrix on a holdout sample for a pytorch cnn model(binary classification)"""
+    """Returns the confusion matrix on a holdout sample for a pytorch cnn model(binary classification).
+
+    Parameters
+    ----------
+    cnn : torchvision.models
+        A pytorch model.
+    data_loader : torch.utils.data.DataLoader
+        A dataloader iterating through the holdout test sample.
+
+    Returns
+    -------
+    pd.DataFrame
+        A pandas dataframe containing the confusion matrix.
+
+    Raises
+    ------
+    ValueError
+        Raised when dataloader is not iterable.
+    """
+
+    if not isinstance(data_loader, Iterable):
+        raise ValueError("data_loader is not iterable")
+
     confusion_matrix = torch.zeros(2, 2)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cnn.eval()
@@ -185,16 +280,46 @@ def pytorch_confusion_matrix(cnn, data_loader):
 
 
 def recall_calculation(confusion_matrix):
-    """return recall of holdout sample from a confusion matrix"""
-    test_recall = confusion_matrix.iloc[1, 1] / (
-        confusion_matrix.iloc[1, 1] + confusion_matrix.iloc[1, 0]
-    )
+    """Returns the recall score for the holdout test sample from a confusion matrix.
+
+    Parameters
+    ----------
+    confusion_matrix : pd.DataFrame
+        A pandas dataframe with the confusion matrix for the holdout test sample.
+
+    Returns
+    -------
+    int
+        The recall score for the holdout test sample.
+
+    Raises
+    ------
+    TypeError
+        Error raised when input is not a pd.DataFrame.
+    """
+
+    if not isinstance(confusion_matrix, pd.DataFrame):
+        raise TypeError("confusion_matrix needs to be a dataframe")
+
+    if (confusion_matrix.iloc[1, 1] + confusion_matrix.iloc[1, 0]) == 0:
+        test_recall = 0
+    else:
+        test_recall = confusion_matrix.iloc[1, 1] / (
+            confusion_matrix.iloc[1, 1] + confusion_matrix.iloc[1, 0]
+        )
+
     print(f"Test recall is {test_recall*100:.2f}%.")
     return test_recall
 
 
 class LipoDataset(torch.utils.data.Dataset):
-    """define a custom dataset to be able to do albument transformations"""
+    """Define a custom dataset to be able to do albument transformations
+
+    Parameters
+    ----------
+    torch.utils.data.Dataset : torch.utils.data.Dataset
+        A torch dataset object.
+    """
 
     def __init__(self, root_dir, transform=None):
         self.transform = transform
@@ -236,13 +361,44 @@ class LipoDataset(torch.utils.data.Dataset):
         if self.transform is not None:
             transformed = self.transform(image=image)
             image = transformed["image"]
+            image = image / 255
 
         return image, label
 
 
 def image_transformation_train(TRAIN_DIR, VALID_DIR, IMAGE_SIZE, BATCH_SIZE):
-    """image transformation on training, validation set"""
-    
+    """Apply transformations to images in training and validation directories.
+
+    Parameters
+    ----------
+    TRAIN_DIR : str
+        Path to directory containing train images.
+    VALID_DIR : str
+        Path to directory containing validation images.
+    IMAGE_SIZE : int
+        Size for images to be re-scaled to.
+    BATCH_SIZE : int
+        Batch size for train and validation loaders.
+
+    Returns
+    -------
+    LipoDataset, DataLoader
+        Return train_dataset and valid_dataset (LipoDataset objects) and train_loader and valid_loder (DataLoader objects).
+
+    Raises
+    ------
+    TypeError
+        Raised if IMAGE_SIZE is not an integer.
+    TypeError
+        Raised if BATCH_SIZE is not an integer.
+    """
+
+    if not isinstance(IMAGE_SIZE, int):
+        raise TypeError("image size should be an integer")
+
+    if not isinstance(BATCH_SIZE, int):
+        raise TypeError("batch size should be an integer")
+
     train_transforms = A.Compose(
         [
             A.RandomBrightnessContrast(
@@ -268,7 +424,7 @@ def image_transformation_train(TRAIN_DIR, VALID_DIR, IMAGE_SIZE, BATCH_SIZE):
         train_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
     valid_dataset = LipoDataset(root_dir=VALID_DIR, transform=valid_transforms)
-    
+
     valid_loader = torch.utils.data.DataLoader(
         valid_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
@@ -277,7 +433,35 @@ def image_transformation_train(TRAIN_DIR, VALID_DIR, IMAGE_SIZE, BATCH_SIZE):
 
 
 def image_transformation_test(TEST_DIR, IMAGE_SIZE, BATCH_SIZE):
-    """image transformation on test set"""
+    """Applies Image transformation on test set.
+
+    Parameters
+    ----------
+    TEST_DIR : str
+        Path to directory containing test images.
+    IMAGE_SIZE : int
+        Size for images to be re-scaled to.
+    BATCH_SIZE : int
+        Batch size for train and validation loaders.
+
+    Returns
+    -------
+    LipoDataset, DataLoader
+        Returns the test_dataset (LipoDataset object) and the test_loader (DataLoader Object).
+
+    Raises
+    ------
+    TypeError
+        Raised if IMAGE_SIZE is not an integer.
+    TypeError
+        Raised if BATCH_SIZE is not an integer.
+    """
+
+    if not isinstance(IMAGE_SIZE, int):
+        raise TypeError("image size should be an integer")
+
+    if not isinstance(BATCH_SIZE, int):
+        raise TypeError("batch size should be an integer")
 
     test_transforms = transforms.Compose(
         [transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)), transforms.ToTensor()]
@@ -294,7 +478,7 @@ def image_transformation_test(TEST_DIR, IMAGE_SIZE, BATCH_SIZE):
     )
 
     test_dataset = LipoDataset(root_dir=TEST_DIR, transform=test_transforms)
-    
+
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=BATCH_SIZE, shuffle=False
     )
@@ -303,7 +487,29 @@ def image_transformation_test(TEST_DIR, IMAGE_SIZE, BATCH_SIZE):
 
 
 def confusion_matrix_eval(cnn, data_loader):
-    """retrieves false positives and false negatives for further investigation"""
+    """Retrieves false positives and false negatives for further investigation
+
+    Parameters
+    ----------
+    cnn : torchvision.models
+        A trained pytorch model.
+    data_loader : torch.utils.data.DataLoader
+        A dataloader iterating through the holdout test sample.
+
+    Returns
+    -------
+    dict
+        Dictionary containing cases model classified as false positives and false negatives.
+
+    Raises
+    ------
+    ValueError
+        Raised if data_loader is not iterable.
+    """
+
+    if not isinstance(data_loader, Iterable):
+        raise ValueError("data_loader is not iterable")
+
     fp = []
     fn = []
     cnn.eval()
@@ -332,3 +538,129 @@ def confusion_matrix_eval(cnn, data_loader):
                     )
                 j += 1
         return {"false_positives": fp, "false_negatives": fn}
+
+
+def make_model():
+    """Make densenet model for transfer learning.
+
+    Returns
+    -------
+    torchvision.models
+        A densenet model ready to be used for transfer learning.
+    """
+    densenet = models.densenet121(pretrained=True)
+    new_layers = torch.nn.Sequential(
+        OrderedDict(
+            [
+                ("new1", torch.nn.Linear(1024, 500)),
+                ("relu", torch.nn.ReLU()),
+                ("new2", torch.nn.Linear(500, 1)),
+            ]
+        )
+    )
+
+    densenet.classifier = new_layers
+    torch.manual_seed(2020)
+    densenet.apply(weights_init)
+
+    return densenet
+
+
+def train(model, train_loader, hyperparameters, epochs=20):
+    """Training wrapper for PyTorch network.
+
+    Parameters
+    ----------
+    model : torchvision.models
+        A pytorch model.
+    train_loader : torch.utils.data.DataLoader
+        DataLoader object with data from the training set.
+    hyperparameters : dict
+        A dictionary containing hyperparameter values for learning rate(lr) and beta1.
+    epochs : int, optional
+        The number of epochs to train model for, by default 20.
+
+    Returns
+    -------
+    torchvision.models
+        Returns trained model.
+
+    Raises
+    ------
+    TypeError
+        Raised if train_loader is not an iterable object.
+    TypeError
+        Raised if hyperparameters is not a dictionary.
+    ValueError
+        Raised if there are more than two keys in hyperparameters.
+    """
+
+    if not isinstance(train_loader, Iterable):
+        raise TypeError("train_loader is not iterable")
+
+    if not isinstance(hyperparameters, dict):
+        raise TypeError("Hyparameters needs to be in a dictionary")
+
+    if len(hyperparameters) != 2:
+        raise ValueError("There are only two parameters wanted, lr and beta1")
+
+    criterion = nn.BCEWithLogitsLoss()
+    print("crit")
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=hyperparameters.get("lr", 0.001),
+        betas=(hyperparameters.get("beta1", 0.9), 0.999),
+    )
+    print("optimizer")
+    for epoch in range(epochs):
+        for X, y in train_loader:
+            if device.type == "cuda":
+                X, y = X.to(device, torch.float32), y.to(device, torch.float32)
+            print(X.shape)
+            print(y)
+            optimizer.zero_grad()
+            y_hat = model(X).flatten()
+            print(y_hat)
+            loss = criterion(y_hat, y.type(torch.float32))
+            loss.backward()
+            optimizer.step()
+
+    return model
+
+
+def evaluate(model, valid_loader):
+    """Validation wrapper for PyTorch network.
+
+    Parameters
+    ----------
+    model : torchvision.models
+        A trained pytorch model to be evaluated on a validation set.
+    valid_loader : torch.utils.data.DataLoader
+        DataLoader object with data from the validation set.
+
+    Returns
+    -------
+    int
+        The average accuracy score on validation set.
+    Raises
+    ------
+    ValueError
+        Raised if valid_loader is not an iterable object.
+    """
+
+    if not isinstance(valid_loader, Iterable):
+        raise ValueError("valid_loader is not iterable")
+
+    model.eval()
+    accuracy = 0
+    with torch.no_grad():  # this stops pytorch doing computational graph stuff under-the-hood and saves memory and time
+        for X, y in valid_loader:
+            if device.type == "cuda":
+                X, y = X.to(device, torch.float32), y.to(device, torch.float32)
+            y_hat = model(X).flatten()
+            y_hat_labels = torch.sigmoid(y_hat) > 0.5
+            accuracy += (y_hat_labels == y).type(torch.float32).sum().item()
+    accuracy /= len(valid_loader.dataset)  # avg accuracy
+    print(f"Validation accuracy: {accuracy:.4f}")
+
+    return accuracy
