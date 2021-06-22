@@ -13,7 +13,7 @@ An easy-to-use web application has been developed by the team so that a healthca
 The web app can be accessed
 [here](https://share.streamlit.io/xudongyang2/lipo_deploy/deployment/lipo_app.py). 
 The user is able to open the side bar, upload one or multiple images, and select one of the uploaded images to obtain classification and object detection results. Demo below:
-put gif of demo here
+![alt text](https://github.com/UBC-MDS/capstone-gdrl-lipo/blob/master/image/web_app_demo.gif)
 
 
 ## Data Analysis
