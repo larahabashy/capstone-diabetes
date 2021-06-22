@@ -52,6 +52,8 @@ def main(train_dir, valid_dir, model, image_size, batch_size, epoch, model_save_
     
     print(f"The model selected is {MODEL}.")
     print()
+
+    # model building
     
     if MODEL == "inception":
         pass
@@ -74,9 +76,8 @@ def main(train_dir, valid_dir, model, image_size, batch_size, epoch, model_save_
         features = list(cnn_model.classifier.children())[:-1] # Remove last layer
         features.extend([nn.Linear(num_features, 1)]) # Add our layer with 4 outputs
         cnn_model.classifier = nn.Sequential(*features) # Replace the model classifier
-    # else:
-    #     raise ValueError("Model input should be among 'inception','densenet','resnet','vgg'.")
-        
+    
+    # initialize weight
     torch.manual_seed(SEED)
     cnn_model.apply(weights_init);
 

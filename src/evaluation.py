@@ -39,9 +39,12 @@ def main(test_dir, model_dir, model, image_size, batch_size, seed):
     MODEL = str(model)
     SEED = int(seed)
 
+    #load test data
     test_dataset, test_loader = image_transformation_test(
         TEST_DIR=TEST_DIR, IMAGE_SIZE=IMAGE_SIZE, BATCH_SIZE=BATCH_SIZE
     )
+
+    #model building 
 
     cnn_model = models.inception_v3(pretrained=True)
     cnn_model.fc = nn.Linear(2048, 1)
@@ -70,12 +73,10 @@ def main(test_dir, model_dir, model, image_size, batch_size, seed):
         features = list(cnn_model.classifier.children())[:-1]  # Remove last layer
         features.extend([nn.Linear(num_features, 1)])  # Add our layer with 4 outputs
         cnn_model.classifier = nn.Sequential(*features)  # Replace the model classifier
-    # else:
-    #     raise ValueError("Model input should be among 'inception','densenet','resnet','vgg'.")
 
     cnn_model.load_state_dict(
         torch.load(MODEL_DIR, map_location=torch.device("cpu"))
-    )  # load model from PATH
+    )  # load model weights from PATH
 
     # Move to GPU if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -86,18 +87,21 @@ def main(test_dir, model_dir, model, image_size, batch_size, seed):
     except:
         pass
 
+    # get test accuracy
     test_accura = get_test_accuracy(cnn_model, test_loader)
     pd.DataFrame({test_accura}).to_csv(
         "results/test_accuracy.csv", index=False
     )
     print()
 
+    # get test confusion matrix
     cmtx = pytorch_confusion_matrix(cnn_model, test_loader)
     print("Confusion matrix of the test set: ")
     print(cmtx)
     cmtx.to_csv("results/test_confusion_matrix.csv", index=False)
     print()
 
+    # get test recall
     test_recall_num = recall_calculation(cmtx)
     pd.DataFrame({test_recall_num}).to_csv(
         "results/test_recall.csv", index=False
