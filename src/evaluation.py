@@ -3,12 +3,12 @@
 
 """This script evaluates the performance of model on the test set.
 
-Usage: evaluation.py --test_dir=<test_dir> [--model_dir=models/cnn_model.pt] [--model="inception"] [--image_size=300] [--batch_size=8] [--seed=2021]
+Usage: evaluation.py --test_dir=<test_dir> [--model_dir=models/cnn_model.pt] [--model="densenet"] [--image_size=300] [--batch_size=8] [--seed=2021]
 
 Options:
 --test_dir=<test_dir>              Relative path to the test folder (path)
 --model_dir=<model_dir>            Relative path to the previous saved model (path) [default: models/cnn_model.pt]
---model=<model>                    Transfer learning model(string) [default: 'inception']
+--model=<model>                    Transfer learning model(string) [default: 'densenet']
 --image_size=<image_size>          Image size after processing(integer) [default: 300]
 --batch_size=<batch_size>          Batch size(integer) [default: 8]
 --seed=<seed>                      random seed(integer) [default: 2021]
@@ -88,19 +88,19 @@ def main(test_dir, model_dir, model, image_size, batch_size, seed):
 
     test_accura = get_test_accuracy(cnn_model, test_loader)
     pd.DataFrame({test_accura}).to_csv(
-        "results/" + MODEL + "_test_accuracy.csv", index=False
+        "results/test_accuracy.csv", index=False
     )
     print()
 
     cmtx = pytorch_confusion_matrix(cnn_model, test_loader)
     print("Confusion matrix of the test set: ")
     print(cmtx)
-    cmtx.to_csv("results/" + MODEL + "_test_confusion_matrix.csv", index=False)
+    cmtx.to_csv("results/test_confusion_matrix.csv", index=False)
     print()
 
     test_recall_num = recall_calculation(cmtx)
     pd.DataFrame({test_recall_num}).to_csv(
-        "results/" + MODEL + "_test_recall.csv", index=False
+        "results/test_recall.csv", index=False
     )
 
 

@@ -3,15 +3,15 @@
 
 '''This script trains and saves the specified transfer learning model.
 
-Usage: model.py --train_dir=<train_dir> --valid_dir=<valid_dir> [--model="inception"] [--image_size=300] [--batch_size=8] [--epoch=30] [--model_save_dir=models/cnn_model.pt] [--seed=2021]
+Usage: model.py --train_dir=<train_dir> --valid_dir=<valid_dir> [--model="densenet"] [--image_size=300] [--batch_size=8] [--epoch=50] [--model_save_dir=models/cnn_model.pt] [--seed=2021]
 
 Options:
 --train_dir=<train_dir>            Relative path to the training folder (path)
 --valid_dir=<valid_dir>            Relative path to the validation folder (path)
---model=<model>                    Transfer learning model(string) [default: 'inception']
+--model=<model>                    Transfer learning model(string) [default: 'densenet']
 --image_size=<image_size>          Image size after processing(integer) [default: 300]
 --batch_size=<batch_size>          Batch size(integer) [default: 8]
---epoch=<epoch>                    Number of epochs(integer) [default: 30]
+--epoch=<epoch>                    Number of epochs(integer) [default: 50]
 --model_save_dir=<model_save_dir>  Relative path to where the model will be saved (path) [default: models/cnn_model.pt]
 --seed=<seed>                      random seed(integer) [default: 2021]
 '''
@@ -47,9 +47,7 @@ def main(train_dir, valid_dir, model, image_size, batch_size, epoch, model_save_
     )
     
     cnn_model = models.inception_v3(pretrained=True)
-    cnn_model.fc = nn.Sequential(nn.Linear(2048, 512),
-                                 nn.ReLU(),
-                                 nn.Linear(512, 1))
+    cnn_model.fc = nn.Linear(2048, 1)
     cnn_model.aux_logits = False
     
     print(f"The model selected is {MODEL}.")
@@ -86,8 +84,15 @@ def main(train_dir, valid_dir, model, image_size, batch_size, epoch, model_save_
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     cnn_model.to(device);
 
+    # best hyperparameters for densenet tuned by the team
+    best_hyperparameters = {'lr': 5.474673900063529e-05, 'beta1': 0.7190195309642723}
+
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(cnn_model.parameters())
+    optimizer = torch.optim.Adam(cnn_model.parameters(),                            
+                                    lr=best_hyperparameters.get("lr", 0.001),
+                                        betas=(best_hyperparameters.get("beta1", 0.9), 0.999))
+    if MODEL != 'densenet': # use default hyperparameters if not densenet
+        optimizer = torch.optim.Adam(cnn_model.parameters())
     results = trainer(cnn_model, criterion, optimizer, train_loader, valid_loader, device, epochs=EPOCH)
     
     try:

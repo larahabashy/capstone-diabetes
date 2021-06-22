@@ -12,11 +12,10 @@ dependencies:
   - plotly
   - nbformat
   - scikit-learn
-  - pytorch=1.8.1=py3.7_cuda10.2_cudnn7_0
+  - pytorch=1.8.1
   - black
   - flake8
   - pip
-  - cudatoolkit=10.2.89
   - captum=0.3.1
   - pip:
     - albumentations==0.5.2
