@@ -21,7 +21,7 @@ The notebooks that explores data science methods can be found
 [here](https://github.com/UBC-MDS/capstone-gdrl-lipo/tree/master/notebooks).
 
 The research and discussion on the choice of data science pipeline can be found
-[here](https://github.com/UBC-MDS/capstone-gdrl-lipo/issues).
+[here](https://github.com/UBC-MDS/capstone-gdrl-lipo/blob/master/doc/final_report.pdf).
 
 The source code can be found
 [here](https://github.com/UBC-MDS/capstone-gdrl-lipo/tree/master/src).
@@ -59,7 +59,7 @@ If using a Mac with M1 chip, please make sure miniconda is installed.
    For exmaple, 'model.py' specifies an optional argument for hyperparamter 'epoch' with default value 50 in the 'Usage' and 'Options' sections. To use a different value such as 20 for argument 'epoch' in the machine learning pipeline, please open the Makefile and change line 17 to `	python src/model.py --train_dir=data/train/ --valid_dir=data/val/ --epoch=20`. After that, please save the Makefile and rerun step 6 and step 7 to rebuild the machine learning pipeline and obtain the results. 
 
 ## Future Work
-The model should be re-trained once more ultrasound images become available at a later time.
+The model should be re-trained once more ultrasound images become available at a later time. We also recommend an in-depth ethics analysis to ensure that the model does not unfairly bias against specific patient populations prior to deployment. 
 
 Although the model is performing well on uncropped ultrasound images, additional functionality to crop images can be added to the web application given the model is trained on cropped images. 
 
