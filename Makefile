@@ -10,7 +10,7 @@ all : results/test_accuracy.csv results/test_confusion_matrix.csv results/test_r
 
 # train validation test split
 data/train/ data/val/ data/test/ : src/image_folder_split.py raw/ negative/
-	python src/image_folder_split.py --positive_dir=raw/ --negative_dir=negative/
+	python src/image_folder_split.py --positive_dir=positive/ --negative_dir=negative/
 
 # model training
 models/cnn_model.pt : data/train/ data/val/ src/model.py src/cnn_utils.py
