@@ -1,0 +1,9 @@
+# Train and val data as directories
+train: ../lipo_images/autosplit_train.txt/
+val: ../lipo_images/autosplit_val.txt/
+
+# number of classes
+nc: 1
+
+# class names
+names: ['lipo']
