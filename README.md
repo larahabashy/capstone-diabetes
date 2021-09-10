@@ -18,22 +18,22 @@ The user is able to open the side bar, upload one or multiple images, and select
 
 ## Data Analysis
 The notebooks that explores data science methods can be found 
-[here](https://github.com/UBC-MDS/capstone-gdrl-lipo/tree/master/notebooks).
+[here](https://github.com/larahabashy/capstone-diabetes/tree/master/notebooks).
 
 The research and discussion on the choice of data science pipeline can be found
-[here](https://github.com/UBC-MDS/capstone-gdrl-lipo/blob/master/doc/final_report.pdf).
+[here](https://github.com/larahabashy/capstone-diabetes/blob/master/doc/final_report.pdf).
 
 The source code can be found
-[here](https://github.com/UBC-MDS/capstone-gdrl-lipo/tree/master/src).
+[here](https://github.com/larahabashy/capstone-diabetes/tree/master/src).
 
 ## Usage
 1. Open a terminal and clone this GitHub repository
 ```
-git clone https://github.com/UBC-MDS/capstone-gdrl-lipo.git
+git clone https://github.com/UBC-MDS/capstone-diabetes.git
 ```
 2. Navigate to project root directory (code below)
 ```
-cd capstone-gdrl-lipo
+cd capstone-diabetes
 ```
 3. Create and activate the required conda environment:
 
@@ -64,7 +64,7 @@ The model should be re-trained once more ultrasound images become available at a
 Although the model is performing well on uncropped ultrasound images, additional functionality to crop images can be added to the web application given the model is trained on cropped images. 
 
 The project uses MIT license. It can be found
-[here](https://github.com/UBC-MDS/capstone-gdrl-lipo/blob/master/LICENSE).
+[here](https://github.com/larahabashy/capstone-diabetes/blob/master/LICENSE).
 
 Code of Conduct can be found 
-[here](https://github.com/UBC-MDS/capstone-gdrl-lipo/blob/master/CODE_OF_CONDUCT.md).
+[here](https://github.com/larahabashy/capstone-diabetes/blob/master/CODE_OF_CONDUCT.md).
